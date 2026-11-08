@@ -34,3 +34,53 @@ The available history contains only an initial checkpoint, so it establishes no 
 ## Security & Cleanup
 
 Keep the Root private key local; do not import it into the cluster. `make clean` preserves generated CA files under `certs/`; archive or delete them securely yourself.
+
+## Additional Development Requirements
+
+### Configuration and Templating
+- Treat `config/lab.env` as the central source of environment-specific configuration.
+- Use `config/lab.env.example` as the committed configuration template.
+- Namespaces, application names, cert-manager namespace, ClusterIssuer name and OpenShift apps domain must be configurable.
+- Avoid hardcoding environment-specific values in scripts, YAML manifests and NGINX configurations.
+- Prefer reusable `.yaml.tpl` templates and a lightweight rendering mechanism.
+- Do not introduce Helm, Kustomize or additional templating frameworks unless justified.
+- Keep Kubernetes API structures and security-sensitive settings explicit.
+
+### OpenShift Domain Discovery
+- Support both `apps.example.com` and `*.apps.example.com` inputs.
+- Normalize wildcard domains before generating Route hostnames.
+- Domain resolution priority:
+  1. Explicit user-provided value.
+  2. Value from `config/lab.env`.
+  3. OpenShift discovery using `oc get ingress.config/cluster -o jsonpath='{.spec.domain}'`, when explicitly configured for automatic discovery.
+  4. Documented local-development fallback.
+- Never silently override an explicitly configured domain.
+- Local validation must work without an OpenShift cluster.
+
+### Namespace Configuration
+- Use configured caller, calling and cert-manager namespaces consistently across all generated resources.
+- Derive internal service DNS names and certificate SANs from configured application and namespace names.
+- Do not assume default namespaces when configuration provides custom values.
+
+### Route Requirements
+- Keep Service and Route manifests separate.
+- Use `apiVersion: route.openshift.io/v1` and `kind: Route`.
+- Use TLS passthrough.
+- Keep `CREATE_ROUTES` independent from `INCLUDE_ROUTE_SANS`.
+- Do not generate Route manifests using `oc create route --dry-run=client`.
+
+### Local Development and Validation
+- The OpenShift cluster may be unavailable during development.
+- Provide local validation and manifest rendering that do not require cluster connectivity.
+- Add or improve `make validate` and `make render` targets.
+- Validate rendered YAML, shell syntax, certificate EKUs, SANs, certificate chains, resource names and namespace consistency.
+- Never report successful live deployment or mTLS testing unless actually performed.
+
+### Implementation Principles
+- Prefer minimal, maintainable changes.
+- Inspect existing implementations before replacing them.
+- Avoid duplicated configuration and unnecessary scripts.
+- Preserve working functionality and repository structure.
+- Explain significant technical decisions before making architectural changes.
+- Ask for approval before destructive cluster operations.
+- Never regenerate existing CA material without explicit authorization.
