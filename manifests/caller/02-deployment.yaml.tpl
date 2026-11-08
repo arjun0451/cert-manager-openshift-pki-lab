@@ -2,11 +2,12 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nginx-calling
-  namespace: calling-ns
+  name: __CALLER_DEPLOYMENT_NAME__
+  namespace: __CALLER_NAMESPACE__
   labels:
     app: pki-lab
-    component: calling
+    pki-lab-owned: "true"
+    component: caller
     tier: application
 spec:
   replicas: 1
@@ -17,13 +18,14 @@ spec:
       maxUnavailable: 0
   selector:
     matchLabels:
-      app: nginx-calling
-      component: calling
+    app: __CALLER_DEPLOYMENT_NAME__
+      component: caller
   template:
     metadata:
       labels:
-        app: nginx-calling
-        component: calling
+        app: __CALLER_DEPLOYMENT_NAME__
+        pki-lab-owned: "true"
+        component: caller
         version: v1
       annotations:
         prometheus.io/scrape: "false"
@@ -45,7 +47,7 @@ spec:
                 - key: app
                   operator: In
                   values:
-                  - nginx-calling
+                  - __CALLER_DEPLOYMENT_NAME__
               topologyKey: kubernetes.io/hostname
 
       containers:
@@ -129,7 +131,7 @@ spec:
       volumes:
       - name: server-certs
         secret:
-          secretName: calling-app-tls-secret
+          secretName: __CALLER_SECRET_NAME__
           defaultMode: 0440
       - name: ca-bundle
         configMap:
@@ -140,7 +142,7 @@ spec:
           defaultMode: 0444
       - name: nginx-config
         configMap:
-          name: nginx-config-calling
+          name: __CALLER_CONFIGMAP_NAME__
           defaultMode: 0644
       - name: nginx-cache
         emptyDir: {}

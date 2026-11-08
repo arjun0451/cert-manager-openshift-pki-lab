@@ -1,13 +1,15 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: calling-app
-  namespace: calling-ns
+  name: __CALLER_APP_NAME__
+  namespace: __CALLER_NAMESPACE__
+  labels:
+    pki-lab-owned: "true"
 spec:
   type: ClusterIP
   selector:
-    app: nginx-calling
-    component: calling
+    app: __CALLER_DEPLOYMENT_NAME__
+    component: caller
   ports:
     - name: https
       port: 443

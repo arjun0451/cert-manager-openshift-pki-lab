@@ -1,16 +1,17 @@
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: caller-app
-  namespace: caller-ns
+  name: __CALLING_APP_NAME__
+  namespace: __CALLING_NAMESPACE__
   labels:
     app: pki-lab
-    component: caller
+    pki-lab-owned: "true"
+    component: calling
 spec:
-  host: caller-app.${APPS_DOMAIN}
+  host: __CALLING_APP_NAME__.__APPS_DOMAIN__
   to:
     kind: Service
-    name: caller-app
+    name: __CALLING_APP_NAME__
   port:
     targetPort: https
   tls:

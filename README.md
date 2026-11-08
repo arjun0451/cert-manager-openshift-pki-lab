@@ -10,7 +10,7 @@ A reproducible OpenShift lab for an offline Root CA, an online Intermediate CA m
 - Exactly two leaf certificates are issued: `caller-app-tls-secret` and `calling-app-tls-secret`.
 - Each leaf certificate has both `serverAuth` and `clientAuth` EKUs. Each application reuses its own keypair for inbound server TLS and outbound client authentication.
 - NGINX requires a client certificate on its TLS listener. Its separate HTTP listener on 8080 is only for Kubernetes health probes.
-- Routes use TLS passthrough. Their hostnames are discovered from `ingress.config/cluster`; Route DNS SANs are included by default. Set `INCLUDE_ROUTE_SANS=false` if Routes are not needed.
+- Routes use TLS passthrough. `CREATE_ROUTES` and `INCLUDE_ROUTE_SANS` are independent; an explicit apps domain is used as-is (except a leading `*.` is normalized), then discovery, then the configured local fallback.
 
 ```text
 Offline Root CA (private key stays offline)
@@ -36,7 +36,8 @@ Offline Root CA (private key stays offline)
 
 ```bash
 cp config/lab.env.example config/lab.env
-# Edit only if needed. Normally APPS_DOMAIN remains empty and is discovered automatically.
+# Exported environment variables override this file. Set APPS_DOMAIN explicitly
+# for a cluster-specific value, or use APPS_DOMAIN_FALLBACK for offline rendering.
 ```
 
 The domain is discovered using:
@@ -45,7 +46,15 @@ The domain is discovered using:
 oc get ingress.config/cluster -o jsonpath='{.spec.domain}'
 ```
 
-The Certificate template is rendered at runtime; no lab-specific domain is embedded in a certificate manifest. If you only need in-cluster mTLS, set `INCLUDE_ROUTE_SANS=false`.
+All resources are rendered from lightweight templates at runtime. For in-cluster-only mTLS, set `CREATE_ROUTES=false` and `INCLUDE_ROUTE_SANS=false` independently as needed.
+
+## Offline rendering and validation
+
+```bash
+make render    # write configured manifests to rendered/ without contacting OpenShift
+make validate  # check rendered names, SANs, EKUs, Routes, shell syntax, and an existing CA chain
+make test      # exercise configuration precedence and render combinations
+```
 
 ## Bootstrap from a fresh environment
 
@@ -112,6 +121,8 @@ This exports an application private key from the cluster. Use a dedicated extern
 
 ```bash
 make clean
+# preview only:
+CLEANUP_DRY_RUN=true make clean
 ```
 
 Cleanup is scoped to lab-named resources. It deletes a namespace only when this bootstrap created it (`pki-lab-created=true`); pre-existing namespaces are preserved. The ClusterIssuer and cert-manager Secret are deleted only when labelled `app=pki-lab`. Generated local CA material under `certs/` is intentionally retained; securely archive or remove it yourself.

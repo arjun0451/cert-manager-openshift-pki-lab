@@ -40,6 +40,7 @@ __pycache__/
 # Build artifacts
 dist/
 build/
+rendered/
 
 # Logs
 *.log

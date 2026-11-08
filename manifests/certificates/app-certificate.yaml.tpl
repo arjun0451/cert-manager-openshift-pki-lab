@@ -5,6 +5,7 @@ metadata:
   namespace: __NAMESPACE__
   labels:
     app: pki-lab
+    pki-lab-owned: "true"
 spec:
   secretName: __SECRET_NAME__
   commonName: __APP_NAME__
@@ -26,6 +27,6 @@ __ROUTE_SAN__
     size: 2048
     rotationPolicy: Always
   issuerRef:
-    name: __ISSUER_NAME__
+    name: __CLUSTER_ISSUER_NAME__
     kind: ClusterIssuer
     group: cert-manager.io

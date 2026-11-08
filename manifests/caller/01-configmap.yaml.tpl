@@ -1,11 +1,13 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: nginx-config-calling
-  namespace: calling-ns
+  name: __CALLER_CONFIGMAP_NAME__
+  namespace: __CALLER_NAMESPACE__
+  labels:
+    pki-lab-owned: "true"
   labels:
     app: pki-lab
-    component: calling
+    component: caller
 data:
   nginx.conf: |
     worker_processes auto;
@@ -25,17 +27,17 @@ data:
         ssl_verify_depth 2;
         ssl_protocols TLSv1.2 TLSv1.3;
         location = /health { return 200 "OK\n"; add_header Content-Type text/plain; }
-        location = / { return 200 "calling-app - mTLS identity active\n"; add_header Content-Type text/plain; }
+        location = / { return 200 "__CALLER_APP_NAME__ - mTLS identity active\n"; add_header Content-Type text/plain; }
         location = /call-peer {
-          proxy_pass https://caller-app.caller-ns.svc.cluster.local:443/;
+          proxy_pass https://__CALLING_APP_NAME__.__CALLING_NAMESPACE__.svc.cluster.local:443/;
           proxy_ssl_certificate /etc/nginx/certs/tls.crt;
           proxy_ssl_certificate_key /etc/nginx/certs/tls.key;
           proxy_ssl_trusted_certificate /etc/nginx/trust/ca-bundle.crt;
           proxy_ssl_verify on;
           proxy_ssl_verify_depth 2;
           proxy_ssl_server_name on;
-          proxy_ssl_name caller-app.caller-ns.svc.cluster.local;
-          proxy_set_header Host caller-app.caller-ns.svc.cluster.local;
+          proxy_ssl_name __CALLING_APP_NAME__.__CALLING_NAMESPACE__.svc.cluster.local;
+          proxy_set_header Host __CALLING_APP_NAME__.__CALLING_NAMESPACE__.svc.cluster.local;
           proxy_connect_timeout 10s;
           proxy_read_timeout 30s;
         }

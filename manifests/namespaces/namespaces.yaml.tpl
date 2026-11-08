@@ -2,15 +2,15 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: caller-ns
+  name: __CALLER_NAMESPACE__
   labels:
-    pki-lab-managed: "true"
+    pki-lab-owned: "true"
     component: applications
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: calling-ns
+  name: __CALLING_NAMESPACE__
   labels:
-    pki-lab-managed: "true"
+    pki-lab-owned: "true"
     component: applications

@@ -2,15 +2,12 @@
 set -euo pipefail
 source "$(dirname "$0")/lib/common.sh"
 require_oc_login
-DOMAIN="$(discover_domain)"
+validate_config
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
-for app in caller calling; do
-  if [[ "$app" == caller ]]; then ns="$CALLER_NAMESPACE"; appname=caller-app; else ns="$CALLING_NAMESPACE"; appname=calling-app; fi
-  route_san=''
-  if [[ "$INCLUDE_ROUTE_SANS" == true ]]; then route_san="    - ${appname}.${DOMAIN}"; fi
-  sed -e "s/__NAMESPACE__/${ns}/g" -e "s/__APP_NAME__/${appname}/g" -e "s/__SECRET_NAME__/${appname}-tls-secret/g" \
-      -e "s/__ISSUER_NAME__/${CLUSTER_ISSUER_NAME}/g" -e "s|__ROUTE_SAN__|${route_san}|g" \
-      "$PROJECT_DIR/manifests/certificates/app-certificate.yaml.tpl" > "$TMP/${appname}.yaml"
-  oc apply -f "$TMP/${appname}.yaml"
-done
-echo "Requested two dual-purpose leaf certificates. Apps domain: $DOMAIN"
+domain=''
+[[ "$INCLUDE_ROUTE_SANS" == true ]] && domain="$(resolve_apps_domain)"
+render_certificate "$CALLER_APP_NAME" "$CALLER_NAMESPACE" "$CALLER_SECRET_NAME" "$TMP/caller.yaml" "$domain"
+render_certificate "$CALLING_APP_NAME" "$CALLING_NAMESPACE" "$CALLING_SECRET_NAME" "$TMP/calling.yaml" "$domain"
+oc apply -f "$TMP/caller.yaml"
+oc apply -f "$TMP/calling.yaml"
+echo 'Requested two dual-purpose leaf certificates.'
