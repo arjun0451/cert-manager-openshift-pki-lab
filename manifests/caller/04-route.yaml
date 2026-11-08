@@ -1,0 +1,18 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: caller-app
+  namespace: caller-ns
+  labels:
+    app: pki-lab
+    component: caller
+spec:
+  host: caller-app.${APPS_DOMAIN}
+  to:
+    kind: Service
+    name: caller-app
+  port:
+    targetPort: https
+  tls:
+    termination: passthrough
+    insecureEdgeTerminationPolicy: None

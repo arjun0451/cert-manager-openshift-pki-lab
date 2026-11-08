@@ -1,0 +1,55 @@
+# Certificate files (sensitive)
+certs/*.key
+certs/*.crt
+certs/*.csr
+certs/*.pem
+certs/*.srl
+certs/ca-key-pair/
+certs/intermediate/
+certs/root/
+
+# OpenSSL generated files
+*.srl
+*.csr
+
+# Kubernetes secrets (if exported)
+secrets/
+*.secret.yaml
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.iml
+*.swp
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Build artifacts
+dist/
+build/
+
+# Logs
+*.log
+
+# Project archive
+cert-manager-openshift-pki-lab.tar.gz
+
+
+# Local lab overrides
+config/lab.env
+
+# Local lab overrides
+config/lab.env
