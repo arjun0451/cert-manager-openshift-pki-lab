@@ -25,6 +25,12 @@ grep -q 'externalCertificate:' "$first/edgeroute-07-route.yaml"
 grep -q 'duration: 2h' "$first/edgeroute-04-certificate.yaml"
 grep -q 'renewBefore: 10m' "$first/edgeroute-04-certificate.yaml"
 grep -q 'Backend transport seen by this pod: <strong>\$scheme</strong>' "$first/edgeroute-01-configmap.yaml"
+grep -q 'kind: Bundle' "$first/trustbundle-bundle.yaml"
+grep -q 'key: ca-bundle.p12' "$first/trustbundle-bundle.yaml"
+grep -q 'profile: Modern2023' "$first/trustbundle-bundle.yaml"
+grep -q 'name: trust-caller-app' "$first/trustbundle-caller-service.yaml"
+grep -q 'name: trust-calling-app' "$first/trustbundle-calling-service.yaml"
+grep -q 'key: ca-bundle.p12' "$first/trustbundle-caller-deployment.yaml"
 
 render "$second" env APPS_DOMAIN= CREATE_ROUTES=false INCLUDE_ROUTE_SANS=true APPS_DOMAIN_FALLBACK=local.apps.example.test
 [[ ! -e "$second/caller-route.yaml" ]]

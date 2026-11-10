@@ -10,7 +10,8 @@ CONFIG_KEYS=(
   AUTO_DISCOVER_APPS_DOMAIN APPS_DOMAIN_FALLBACK CERTIFICATE_DURATION
   CERTIFICATE_RENEW_BEFORE EDGE_ROUTE_NAMESPACE EDGE_ROUTE_APP_NAME
   EDGE_ROUTE_SERVICE_NAME EDGE_ROUTE_NAME EDGE_ROUTE_TLS_SECRET ROOT_CA_COMMON_NAME
-  INTERMEDIATE_CA_COMMON_NAME
+  INTERMEDIATE_CA_COMMON_NAME TRUST_CALLER_NAMESPACE TRUST_CALLING_NAMESPACE
+  TRUST_CALLER_APP_NAME TRUST_CALLING_APP_NAME TRUST_BUNDLE_NAME TRUST_MANAGER_NAMESPACE
 )
 for key in "${CONFIG_KEYS[@]}"; do
   if printenv "$key" >/dev/null 2>&1; then
@@ -36,6 +37,12 @@ EDGE_ROUTE_APP_NAME="${EDGE_ROUTE_APP_NAME:-nginx-edge-app}"
 EDGE_ROUTE_SERVICE_NAME="${EDGE_ROUTE_SERVICE_NAME:-nginx-edge-service}"
 EDGE_ROUTE_NAME="${EDGE_ROUTE_NAME:-nginx-edge-route}"
 EDGE_ROUTE_TLS_SECRET="${EDGE_ROUTE_TLS_SECRET:-edge-route-tls}"
+TRUST_CALLER_NAMESPACE="${TRUST_CALLER_NAMESPACE:-trust-caller-ns}"
+TRUST_CALLING_NAMESPACE="${TRUST_CALLING_NAMESPACE:-trust-calling-ns}"
+TRUST_CALLER_APP_NAME="${TRUST_CALLER_APP_NAME:-trust-caller-app}"
+TRUST_CALLING_APP_NAME="${TRUST_CALLING_APP_NAME:-trust-calling-app}"
+TRUST_BUNDLE_NAME="${TRUST_BUNDLE_NAME:-pki-lab-java-trust-bundle}"
+TRUST_MANAGER_NAMESPACE="${TRUST_MANAGER_NAMESPACE:-cert-manager}"
 CERTIFICATE_DURATION="${CERTIFICATE_DURATION:-60m}"
 CERTIFICATE_RENEW_BEFORE="${CERTIFICATE_RENEW_BEFORE:-10m}"
 CREATE_ROUTES="${CREATE_ROUTES:-true}"
@@ -51,6 +58,12 @@ CALLER_DEPLOYMENT_NAME="nginx-${CALLER_APP_NAME}"
 CALLING_DEPLOYMENT_NAME="nginx-${CALLING_APP_NAME}"
 CALLER_CONFIGMAP_NAME="nginx-config-${CALLER_APP_NAME}"
 CALLING_CONFIGMAP_NAME="nginx-config-${CALLING_APP_NAME}"
+TRUST_CALLER_SECRET_NAME="${TRUST_CALLER_APP_NAME}-tls-secret"
+TRUST_CALLING_SECRET_NAME="${TRUST_CALLING_APP_NAME}-tls-secret"
+TRUST_CALLER_CONFIGMAP_NAME="nginx-config-${TRUST_CALLER_APP_NAME}"
+TRUST_CALLING_CONFIGMAP_NAME="nginx-config-${TRUST_CALLING_APP_NAME}"
+TRUST_CALLER_DEPLOYMENT_NAME="nginx-${TRUST_CALLER_APP_NAME}"
+TRUST_CALLING_DEPLOYMENT_NAME="nginx-${TRUST_CALLING_APP_NAME}"
 need() { command -v "$1" >/dev/null 2>&1 || { echo "ERROR: Required command '$1' not found" >&2; exit 1; }; }
 require_oc_login() { need oc; oc whoami >/dev/null 2>&1 || { echo 'ERROR: Run oc login first.' >&2; exit 1; }; }
 is_valid_name() { [[ "$1" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]]; }
@@ -78,10 +91,11 @@ resolve_apps_domain() {
 }
 validate_config() {
   local value duration renewal
-  for value in "$CALLER_NAMESPACE" "$CALLING_NAMESPACE" "$CALLER_APP_NAME" "$CALLING_APP_NAME" "$EDGE_ROUTE_NAMESPACE" "$EDGE_ROUTE_APP_NAME" "$EDGE_ROUTE_SERVICE_NAME" "$EDGE_ROUTE_NAME" "$EDGE_ROUTE_TLS_SECRET"; do
+  for value in "$CALLER_NAMESPACE" "$CALLING_NAMESPACE" "$CALLER_APP_NAME" "$CALLING_APP_NAME" "$EDGE_ROUTE_NAMESPACE" "$EDGE_ROUTE_APP_NAME" "$EDGE_ROUTE_SERVICE_NAME" "$EDGE_ROUTE_NAME" "$EDGE_ROUTE_TLS_SECRET" "$TRUST_CALLER_NAMESPACE" "$TRUST_CALLING_NAMESPACE" "$TRUST_CALLER_APP_NAME" "$TRUST_CALLING_APP_NAME" "$TRUST_BUNDLE_NAME" "$TRUST_MANAGER_NAMESPACE"; do
     is_valid_name "$value" || { echo "ERROR: Invalid Kubernetes name: $value" >&2; return 1; }
   done
   [[ "$CALLER_APP_NAME" != "$CALLING_APP_NAME" ]] || { echo 'ERROR: Application names must differ.' >&2; return 1; }
+  [[ "$TRUST_CALLER_APP_NAME" != "$TRUST_CALLING_APP_NAME" ]] || { echo 'ERROR: Trust scenario application names must differ.' >&2; return 1; }
   for value in "$CREATE_ROUTES" "$INCLUDE_ROUTE_SANS" "$AUTO_DISCOVER_APPS_DOMAIN"; do
     [[ "$value" == true || "$value" == false ]] || { echo "ERROR: Expected true or false, got: $value" >&2; return 1; }
   done
@@ -128,4 +142,24 @@ render_certificate() {
     -e "s|__CERTIFICATE_RENEW_BEFORE__|${CERTIFICATE_RENEW_BEFORE}|g" \
     -e "s|__ROUTE_SAN__|${route_san}|g" \
     "$PROJECT_DIR/manifests/certificates/app-certificate.yaml.tpl" > "$output"
+}
+
+render_trust_template() {
+  local template="$1" output="$2" app_name="$3" namespace="$4" peer_name="$5" peer_namespace="$6" secret_name="$7" configmap_name="$8" deployment_name="$9"
+  sed \
+    -e "s|__TRUST_CALLER_NAMESPACE__|${TRUST_CALLER_NAMESPACE}|g" \
+    -e "s|__TRUST_CALLING_NAMESPACE__|${TRUST_CALLING_NAMESPACE}|g" \
+    -e "s|__TRUST_MANAGER_NAMESPACE__|${TRUST_MANAGER_NAMESPACE}|g" \
+    -e "s|__TRUST_BUNDLE_NAME__|${TRUST_BUNDLE_NAME}|g" \
+    -e "s|__CLUSTER_ISSUER_NAME__|${CLUSTER_ISSUER_NAME}|g" \
+    -e "s|__CERTIFICATE_DURATION__|${CERTIFICATE_DURATION}|g" \
+    -e "s|__CERTIFICATE_RENEW_BEFORE__|${CERTIFICATE_RENEW_BEFORE}|g" \
+    -e "s|__TRUST_APP_NAME__|${app_name}|g" \
+    -e "s|__TRUST_NAMESPACE__|${namespace}|g" \
+    -e "s|__TRUST_PEER_NAME__|${peer_name}|g" \
+    -e "s|__TRUST_PEER_NAMESPACE__|${peer_namespace}|g" \
+    -e "s|__TRUST_SECRET_NAME__|${secret_name}|g" \
+    -e "s|__TRUST_CONFIGMAP_NAME__|${configmap_name}|g" \
+    -e "s|__TRUST_DEPLOYMENT_NAME__|${deployment_name}|g" \
+    "$template" > "$output"
 }

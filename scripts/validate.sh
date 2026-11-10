@@ -40,6 +40,15 @@ grep -Fxq '    insecureEdgeTerminationPolicy: Redirect' "$edge_route"
 grep -Fxq "      name: $EDGE_ROUTE_TLS_SECRET" "$edge_route"
 grep -Fq "  - $EDGE_ROUTE_NAME.$(resolve_apps_domain)" "$edge_certificate"
 grep -Fxq '  - server auth' "$edge_certificate"
+trust_bundle="$RENDER_DIR/trustbundle-bundle.yaml"
+grep -Fxq 'apiVersion: trust.cert-manager.io/v1alpha1' "$trust_bundle"
+grep -Fxq 'kind: Bundle' "$trust_bundle"
+grep -Fxq '        key: ca-bundle.p12' "$trust_bundle"
+grep -Fxq '        profile: Modern2023' "$trust_bundle"
+for deployment in "$RENDER_DIR/trustbundle-caller-deployment.yaml" "$RENDER_DIR/trustbundle-calling-deployment.yaml"; do
+  grep -Fxq '          - {key: ca-bundle.crt, path: ca-bundle.crt}' "$deployment"
+  grep -Fxq '          - {key: ca-bundle.p12, path: ca-bundle.p12}' "$deployment"
+done
 root="$PROJECT_DIR/certs/root/certs/ca.cert.pem"
 intermediate="$PROJECT_DIR/certs/intermediate/certs/intermediate.cert.pem"
 if [[ -s "$root" && -s "$intermediate" ]]; then
