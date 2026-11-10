@@ -33,6 +33,12 @@
       "id": "timeseries",
       "name": "Time series",
       "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "bargauge",
+      "name": "Bar gauge",
+      "version": ""
     }
   ],
   "annotations": {
@@ -81,7 +87,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "count(certmanager_certificate_not_after_timestamp_seconds{job=\"cert-manager\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"})",
+          "expr": "count(certmanager_certificate_not_after_timestamp_seconds{job=~\"$job\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"})",
           "format": "time_series",
           "instant": true,
           "legendFormat": "",
@@ -145,7 +151,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "count(max by (exported_namespace, name, issuer_name) (certmanager_certificate_ready_status{job=\"cert-manager\", condition=\"True\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} == 1))",
+          "expr": "count(max by (exported_namespace, name, issuer_name) (certmanager_certificate_ready_status{job=~\"$job\", condition=\"True\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} == 1))",
           "format": "time_series",
           "instant": true,
           "legendFormat": "",
@@ -209,7 +215,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "count(max by (exported_namespace, name, issuer_name) (certmanager_certificate_ready_status{job=\"cert-manager\", condition=\"False\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} == 1))",
+          "expr": "count(max by (exported_namespace, name, issuer_name) (certmanager_certificate_ready_status{job=~\"$job\", condition=\"False\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} == 1))",
           "format": "time_series",
           "instant": true,
           "legendFormat": "",
@@ -273,7 +279,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "count((certmanager_certificate_not_after_timestamp_seconds{job=\"cert-manager\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} - time() < 604800) and (certmanager_certificate_not_after_timestamp_seconds{job=\"cert-manager\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} > time()))",
+          "expr": "count((certmanager_certificate_not_after_timestamp_seconds{job=~\"$job\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} - time() < 604800) and (certmanager_certificate_not_after_timestamp_seconds{job=~\"$job\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} > time()))",
           "format": "time_series",
           "instant": true,
           "legendFormat": "",
@@ -337,7 +343,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "count((max by (exported_namespace, name, issuer_name) (certmanager_certificate_ready_status{job=\"cert-manager\", condition=\"True\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} == 1)) and on (exported_namespace, name, issuer_name) (certmanager_certificate_not_before_timestamp_seconds{job=\"cert-manager\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} <= time()) and on (exported_namespace, name, issuer_name) (certmanager_certificate_not_after_timestamp_seconds{job=\"cert-manager\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} > time()))",
+          "expr": "count((max by (exported_namespace, name, issuer_name) (certmanager_certificate_ready_status{job=~\"$job\", condition=\"True\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} == 1)) and on (exported_namespace, name, issuer_name) (certmanager_certificate_not_before_timestamp_seconds{job=~\"$job\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} <= time()) and on (exported_namespace, name, issuer_name) (certmanager_certificate_not_after_timestamp_seconds{job=~\"$job\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} > time()))",
           "format": "time_series",
           "instant": true,
           "legendFormat": "",
@@ -401,7 +407,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "count((certmanager_certificate_not_after_timestamp_seconds{job=\"cert-manager\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} - time() < 86400) and (certmanager_certificate_not_after_timestamp_seconds{job=\"cert-manager\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} > time()))",
+          "expr": "count((certmanager_certificate_not_after_timestamp_seconds{job=~\"$job\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} - time() < 86400) and (certmanager_certificate_not_after_timestamp_seconds{job=~\"$job\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} > time()))",
           "format": "time_series",
           "instant": true,
           "legendFormat": "",
@@ -465,7 +471,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "sum(certmanager_clusterissuer_ready_status{job=\"cert-manager\"} == 1)",
+          "expr": "sum(certmanager_clusterissuer_ready_status{job=~\"$job\"} == 1)",
           "format": "time_series",
           "instant": true,
           "legendFormat": "",
@@ -529,7 +535,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "sum(increase(certmanager_controller_sync_error_count{job=\"cert-manager\"}[1h]))",
+          "expr": "sum(increase(certmanager_controller_sync_error_count{job=~\"$job\"}[1h]))",
           "format": "time_series",
           "instant": true,
           "legendFormat": "",
@@ -574,8 +580,8 @@
     {
       "id": 9,
       "type": "table",
-      "title": "Certificate expiry — days remaining",
-      "description": "Days until certificate expiry. Negative values indicate expired certificates.",
+      "title": "Certificate expiry — validity remaining",
+      "description": "Human-readable time until certificate expiry. Negative values indicate expired certificates.",
       "gridPos": {
         "h": 9,
         "w": 24,
@@ -593,7 +599,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "(certmanager_certificate_not_after_timestamp_seconds{job=\"cert-manager\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} - time()) / 86400",
+          "expr": "certmanager_certificate_not_after_timestamp_seconds{job=~\"$job\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} - time()",
           "format": "table",
           "instant": true,
           "legendFormat": "{{exported_namespace}} / {{name}}",
@@ -624,14 +630,14 @@
               "exported_namespace": "Certificate namespace",
               "name": "Certificate",
               "issuer_name": "Issuer",
-              "Value": "Days remaining"
+              "Value": "Validity remaining"
             }
           }
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "d",
+          "unit": "dtdurations",
           "custom": {
             "align": "auto",
             "cellOptions": {
@@ -657,13 +663,13 @@
     {
       "id": 10,
       "type": "table",
-      "title": "Certificate renewal — days until scheduled renewal",
-      "description": "Days until the renewal timestamp currently exported by cert-manager.",
+      "title": "Certificate renewal — time until scheduled renewal",
+      "description": "Human-readable time until cert-manager's scheduled renewal. Negative values are overdue.",
       "gridPos": {
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 19
+        "y": 41
       },
       "datasource": {
         "type": "prometheus",
@@ -676,7 +682,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "(certmanager_certificate_renewal_timestamp_seconds{job=\"cert-manager\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} - time()) / 86400",
+          "expr": "certmanager_certificate_renewal_timestamp_seconds{job=~\"$job\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} - time()",
           "format": "table",
           "instant": true,
           "legendFormat": "{{exported_namespace}} / {{name}}",
@@ -707,14 +713,14 @@
               "exported_namespace": "Certificate namespace",
               "name": "Certificate",
               "issuer_name": "Issuer",
-              "Value": "Days remaining"
+              "Value": "Renewal remaining"
             }
           }
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "d",
+          "unit": "dtdurations",
           "custom": {
             "align": "auto",
             "cellOptions": {
@@ -744,9 +750,9 @@
       "description": "Per-second rate of controller sync errors. A flat zero line is expected when reconciliation is healthy.",
       "gridPos": {
         "h": 7,
-        "w": 12,
+        "w": 24,
         "x": 0,
-        "y": 40
+        "y": 60
       },
       "datasource": {
         "type": "prometheus",
@@ -759,7 +765,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "sum by (controller) (rate(certmanager_controller_sync_error_count{job=\"cert-manager\"}[5m]))",
+          "expr": "sum by (controller) (rate(certmanager_controller_sync_error_count{job=~\"$job\"}[5m]))",
           "format": "time_series",
           "instant": false,
           "legendFormat": "{{controller}}",
@@ -798,7 +804,7 @@
         "h": 12,
         "w": 24,
         "x": 0,
-        "y": 28
+        "y": 19
       },
       "datasource": {
         "type": "prometheus",
@@ -811,7 +817,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "label_join(certmanager_certificate_not_before_timestamp_seconds{job=\"cert-manager\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} * 1000, \"certificate_key\", \"/\", \"exported_namespace\", \"name\", \"issuer_name\")",
+          "expr": "label_join(certmanager_certificate_not_before_timestamp_seconds{job=~\"$job\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} * 1000, \"certificate_key\", \"/\", \"exported_namespace\", \"name\", \"issuer_name\")",
           "format": "table",
           "instant": true,
           "legendFormat": "",
@@ -824,7 +830,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "label_join(certmanager_certificate_not_after_timestamp_seconds{job=\"cert-manager\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} * 1000, \"certificate_key\", \"/\", \"exported_namespace\", \"name\", \"issuer_name\")",
+          "expr": "label_join(certmanager_certificate_not_after_timestamp_seconds{job=~\"$job\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} * 1000, \"certificate_key\", \"/\", \"exported_namespace\", \"name\", \"issuer_name\")",
           "format": "table",
           "instant": true,
           "legendFormat": "",
@@ -837,7 +843,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "label_join((certmanager_certificate_not_after_timestamp_seconds{job=\"cert-manager\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} - time()) / 86400, \"certificate_key\", \"/\", \"exported_namespace\", \"name\", \"issuer_name\")",
+          "expr": "label_join(certmanager_certificate_not_after_timestamp_seconds{job=~\"$job\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} - time(), \"certificate_key\", \"/\", \"exported_namespace\", \"name\", \"issuer_name\")",
           "format": "table",
           "instant": true,
           "legendFormat": "",
@@ -886,7 +892,7 @@
               "issuer_kind": "Issuer type",
               "Value #A": "Not Before",
               "Value #B": "Not After",
-              "Value #C": "Days remaining"
+              "Value #C": "Validity remaining"
             }
           }
         }
@@ -937,12 +943,12 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Days remaining"
+              "options": "Validity remaining"
             },
             "properties": [
               {
                 "id": "unit",
-                "value": "d"
+                "value": "dtdurations"
               },
               {
                 "id": "decimals",
@@ -963,11 +969,15 @@
                     },
                     {
                       "color": "red",
-                      "value": 1
+                      "value": 604800
+                    },
+                    {
+                      "color": "orange",
+                      "value": 604801
                     },
                     {
                       "color": "green",
-                      "value": 1.000001
+                      "value": 2592000
                     }
                   ]
                 }
@@ -993,6 +1003,142 @@
           "countRows": false
         }
       }
+    },
+    {
+      "id": 15,
+      "type": "bargauge",
+      "title": "Certificate validity remaining",
+      "description": "Remaining validity per certificate. Production thresholds: red below 7 days, orange below 30 days, green at 30 days or more.",
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 31
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "max by (exported_namespace, name, issuer_name) (certmanager_certificate_not_after_timestamp_seconds{job=~\"$job\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} - time())",
+          "format": "time_series",
+          "instant": true,
+          "legendFormat": "{{exported_namespace}} / {{name}}",
+          "refId": "A",
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dtdurations",
+          "min": 0,
+          "max": 7776000,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 604800
+              },
+              {
+                "color": "green",
+                "value": 2592000
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 16,
+      "type": "bargauge",
+      "title": "Certificate renewal remaining",
+      "description": "Time until cert-manager's scheduled renewal per certificate. Red is overdue, orange is due within 24 hours, and green is more than 24 hours away.",
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 50
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "max by (exported_namespace, name, issuer_name) (certmanager_certificate_renewal_timestamp_seconds{job=~\"$job\", exported_namespace=~\"$namespace\", issuer_name=~\"$issuer\"} - time())",
+          "format": "time_series",
+          "instant": true,
+          "legendFormat": "{{exported_namespace}} / {{name}}",
+          "refId": "A",
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dtdurations",
+          "min": 0,
+          "max": 7776000,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0
+              },
+              {
+                "color": "green",
+                "value": 86400
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
     }
   ],
   "refresh": "1m",
@@ -1009,6 +1155,32 @@
       {
         "current": {
           "selected": true,
+          "text": "cert-manager",
+          "value": "cert-manager"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_PROMETHEUS}"
+        },
+        "definition": "label_values(certmanager_certificate_not_after_timestamp_seconds, job)",
+        "hide": 0,
+        "includeAll": false,
+        "label": "cert-manager job",
+        "multi": false,
+        "name": "job",
+        "options": [],
+        "query": {
+          "query": "label_values(certmanager_certificate_not_after_timestamp_seconds, job)",
+          "refId": "Prometheus-job"
+        },
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": true,
           "text": "All",
           "value": "$__all"
         },
@@ -1016,7 +1188,7 @@
           "type": "prometheus",
           "uid": "${DS_PROMETHEUS}"
         },
-        "definition": "label_values(certmanager_certificate_not_after_timestamp_seconds{job=\"cert-manager\"}, exported_namespace)",
+        "definition": "label_values(certmanager_certificate_not_after_timestamp_seconds{job=~\"$job\"}, exported_namespace)",
         "hide": 0,
         "includeAll": true,
         "label": "Certificate namespace",
@@ -1024,7 +1196,7 @@
         "name": "namespace",
         "options": [],
         "query": {
-          "query": "label_values(certmanager_certificate_not_after_timestamp_seconds{job=\"cert-manager\"}, exported_namespace)",
+          "query": "label_values(certmanager_certificate_not_after_timestamp_seconds{job=~\"$job\"}, exported_namespace)",
           "refId": "Prometheus-namespace"
         },
         "refresh": 1,
@@ -1042,7 +1214,7 @@
           "type": "prometheus",
           "uid": "${DS_PROMETHEUS}"
         },
-        "definition": "label_values(certmanager_certificate_not_after_timestamp_seconds{job=\"cert-manager\", exported_namespace=~\"$namespace\"}, issuer_name)",
+        "definition": "label_values(certmanager_certificate_not_after_timestamp_seconds{job=~\"$job\", exported_namespace=~\"$namespace\"}, issuer_name)",
         "hide": 0,
         "includeAll": true,
         "label": "Issuer",
@@ -1050,7 +1222,7 @@
         "name": "issuer",
         "options": [],
         "query": {
-          "query": "label_values(certmanager_certificate_not_after_timestamp_seconds{job=\"cert-manager\", exported_namespace=~\"$namespace\"}, issuer_name)",
+          "query": "label_values(certmanager_certificate_not_after_timestamp_seconds{job=~\"$job\", exported_namespace=~\"$namespace\"}, issuer_name)",
           "refId": "Prometheus-issuer"
         },
         "refresh": 1,
