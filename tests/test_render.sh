@@ -18,6 +18,13 @@ grep -q 'host: frontend.apps.example.com' "$first/caller-route.yaml"
 grep -q -- '- frontend.apps.example.com' "$first/caller-certificate.yaml"
 grep -q 'duration: 2h' "$first/caller-certificate.yaml"
 grep -q 'renewBefore: 10m' "$first/caller-certificate.yaml"
+grep -q 'host: nginx-edge-route.apps.example.com' "$first/edgeroute-07-route.yaml"
+grep -q 'termination: edge' "$first/edgeroute-07-route.yaml"
+grep -q 'insecureEdgeTerminationPolicy: Redirect' "$first/edgeroute-07-route.yaml"
+grep -q 'externalCertificate:' "$first/edgeroute-07-route.yaml"
+grep -q 'duration: 2h' "$first/edgeroute-04-certificate.yaml"
+grep -q 'renewBefore: 10m' "$first/edgeroute-04-certificate.yaml"
+grep -q 'Backend transport seen by this pod: <strong>\$scheme</strong>' "$first/edgeroute-01-configmap.yaml"
 
 render "$second" env APPS_DOMAIN= CREATE_ROUTES=false INCLUDE_ROUTE_SANS=true APPS_DOMAIN_FALLBACK=local.apps.example.test
 [[ ! -e "$second/caller-route.yaml" ]]

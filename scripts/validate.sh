@@ -25,12 +25,21 @@ if [[ "$INCLUDE_ROUTE_SANS" == true ]]; then
   grep -Fq -- "- $CALLING_APP_NAME.$domain" "$RENDER_DIR/calling-certificate.yaml"
 fi
 if [[ "$CREATE_ROUTES" == true ]]; then
-  for route in "$RENDER_DIR"/*-route.yaml; do
+  for route in "$RENDER_DIR/caller-route.yaml" "$RENDER_DIR/calling-route.yaml"; do
     grep -Fxq 'apiVersion: route.openshift.io/v1' "$route"
     grep -Fxq 'kind: Route' "$route"
     grep -Fxq '    termination: passthrough' "$route"
   done
 fi
+edge_route="$RENDER_DIR/edgeroute-07-route.yaml"
+edge_certificate="$RENDER_DIR/edgeroute-04-certificate.yaml"
+grep -Fxq 'apiVersion: route.openshift.io/v1' "$edge_route"
+grep -Fxq 'kind: Route' "$edge_route"
+grep -Fxq '    termination: edge' "$edge_route"
+grep -Fxq '    insecureEdgeTerminationPolicy: Redirect' "$edge_route"
+grep -Fxq "      name: $EDGE_ROUTE_TLS_SECRET" "$edge_route"
+grep -Fq "  - $EDGE_ROUTE_NAME.$(resolve_apps_domain)" "$edge_certificate"
+grep -Fxq '  - server auth' "$edge_certificate"
 root="$PROJECT_DIR/certs/root/certs/ca.cert.pem"
 intermediate="$PROJECT_DIR/certs/intermediate/certs/intermediate.cert.pem"
 if [[ -s "$root" && -s "$intermediate" ]]; then

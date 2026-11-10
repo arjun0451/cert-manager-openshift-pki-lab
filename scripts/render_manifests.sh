@@ -6,10 +6,7 @@ RENDER_OFFLINE=true
 RENDER_DIR="${RENDER_DIR:-$PROJECT_DIR/rendered}"
 validate_config
 mkdir -p "$RENDER_DIR"
-domain=''
-if [[ "$CREATE_ROUTES" == true || "$INCLUDE_ROUTE_SANS" == true ]]; then
-  domain="$(resolve_apps_domain)"
-fi
+domain="$(resolve_apps_domain)"
 
 render_template "$PROJECT_DIR/manifests/namespaces/namespaces.yaml.tpl" "$RENDER_DIR/namespaces.yaml"
 render_template "$PROJECT_DIR/manifests/clusterissuer/clusterissuer.yaml" "$RENDER_DIR/clusterissuer.yaml"
@@ -24,4 +21,7 @@ if [[ "$CREATE_ROUTES" == true ]]; then
 fi
 render_certificate "$CALLER_APP_NAME" "$CALLER_NAMESPACE" "$CALLER_SECRET_NAME" "$RENDER_DIR/caller-certificate.yaml" "$domain"
 render_certificate "$CALLING_APP_NAME" "$CALLING_NAMESPACE" "$CALLING_SECRET_NAME" "$RENDER_DIR/calling-certificate.yaml" "$domain"
+for resource in 00-namespace 01-configmap 02-deployment 03-service 04-certificate 05-router-secret-reader-role 06-router-secret-reader-binding 07-route; do
+  render_template "$PROJECT_DIR/manifests/edgeroute/$resource.yaml.tpl" "$RENDER_DIR/edgeroute-$resource.yaml" "$domain"
+done
 echo "Rendered manifests in $RENDER_DIR"

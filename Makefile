@@ -1,4 +1,4 @@
-.PHONY: help prereqs root-ca intermediate verify-pki namespaces issuer certs verify-certs deploy verify-mtls render validate test bootstrap all clean
+.PHONY: help prereqs root-ca intermediate verify-pki namespaces issuer certs verify-certs deploy verify-mtls edge-route verify-edge-route clean-edge-route render validate test bootstrap all clean
 help:
 	@echo 'make bootstrap (or make all) - build PKI, configure cert-manager, deploy and verify bidirectional mTLS'
 	@echo 'make clean - remove only resources created by this lab'
@@ -24,6 +24,12 @@ deploy:
 	@scripts/09_deploy_calling_nginx.sh
 verify-mtls:
 	@scripts/10_verify_mtls.sh
+edge-route:
+	@scripts/11_deploy_edge_route.sh
+verify-edge-route:
+	@scripts/12_verify_edge_route.sh
+clean-edge-route:
+	@scripts/13_cleanup_edge_route.sh
 render:
 	@RENDER_OFFLINE=true scripts/render_manifests.sh
 validate: render
