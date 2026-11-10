@@ -1,13 +1,21 @@
 # Edge Route TLS Flow
 
-`make edge-route` deploys an HTTP-only NGINX backend in `edgeroute-ns` using the existing lab NGINX image and resource profile. cert-manager issues `edge-route-tls` for `nginx-edge-route.<apps-domain>` through `external-intermediate-ca`.
+`make edge-route` deploys `nginx-edge-app` in `edgeroute-ns`. It reuses the lab NGINX image and resource profile but exposes HTTP only on port 8080.
 
-The Route uses edge termination and `spec.tls.externalCertificate` to reference that Secret. The OpenShift router reads the Secret through a narrowly scoped Role and RoleBinding, so cert-manager renewal updates are consumed without copying private key material into Git or the Route specification.
+The scenario creates `edge-route-cert` through `external-intermediate-ca`. The Certificate SAN is `nginx-edge-route.<apps-domain>` and its Secret is `edge-route-tls`.
 
 ```text
-External client -- HTTPS --> OpenShift router -- HTTP --> Service --> NGINX pod
+External client -- HTTPS --> OpenShift router -- HTTP --> nginx-edge-service --> NGINX
 ```
 
-The page returned through the Route reports `Backend transport seen by this pod: http`, demonstrating that TLS terminates at the router. This scenario is not end-to-end encryption.
+The Route uses `route.openshift.io/v1`, `termination: edge`, `insecureEdgeTerminationPolicy: Redirect`, and `spec.tls.externalCertificate.name: edge-route-tls`. Scoped RBAC allows the router service account to read only that Secret. cert-manager renewals update the Secret; the Route continues to reference it without storing a private key in Git or the Route manifest.
 
-Use `make verify-edge-route` to verify the certificate SAN, Route configuration, external HTTPS, and HTTP backend transport. Use `CLEANUP_DRY_RUN=true make clean-edge-route` to preview cleanup, or `make clean-edge-route` to remove only a namespace the lab created and labelled.
+## Commands
+
+```bash
+make edge-route
+make verify-edge-route
+CLEANUP_DRY_RUN=true make clean-edge-route
+```
+
+Verification confirms Certificate readiness, Route configuration, the external certificate SAN, HTTPS access, and the page statement that the backend observed HTTP. This scenario intentionally does not demonstrate end-to-end TLS.

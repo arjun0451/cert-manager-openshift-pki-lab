@@ -1,12 +1,12 @@
 # Changelog
 
-## 2.0.0 - 2026-11-04
+## Unreleased
 
-- Reworked application identity to two dual-EKU leaf certificates (one per app), reused for server and client TLS.
-- Added bidirectional mTLS with strict client-certificate verification and verified hostname/trust chain.
-- Added public Root + Intermediate trust bundle distribution to both application namespaces.
-- Added automatic OpenShift apps-domain discovery and runtime Certificate template rendering.
-- Reworked Routes to use the discovered domain rather than a hardcoded lab hostname.
-- Added shared configuration helper, `config/lab.env.example`, and a fresh-environment `make bootstrap` flow.
-- Updated cleanup to retain local CA material and scope cluster deletion to lab-owned namespaces/resources.
-- Rewrote documentation and test cases to match the implemented architecture.
+- Added the edge-termination Route scenario with a cert-manager-managed external certificate.
+- Added the trust-manager Bundle scenario with PEM and Java-compatible PKCS#12 output, two mTLS workloads, and passthrough Routes.
+- Added offline Route, SAN, configuration, and rendering validation for all scenarios.
+- Updated cleanup safeguards, certificate reload handling, and operator documentation.
+
+## Initial lab
+
+- Added the offline Root CA, cert-manager Intermediate CA, and base bidirectional NGINX mTLS scenario.

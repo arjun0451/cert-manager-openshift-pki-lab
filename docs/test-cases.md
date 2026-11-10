@@ -1,41 +1,43 @@
-# Test Cases
+# Validation Cases
 
-## Certificate issuance
+## Offline configuration and rendering
 
 ```bash
-oc get clusterissuer external-intermediate-ca
-oc get certificate -n caller-ns caller-app-tls
-oc get certificate -n calling-ns calling-app-tls
+make test
+make render
+make validate
 ```
 
-Expected: ClusterIssuer Ready=True and both Certificates Ready=True. Inspect EKUs and SANs:
+Expected: configuration precedence works, wildcard apps domains are normalized, all generated YAML is placeholder-free, Route API versions/termination settings are valid, and certificate SAN/EKU templates are present. These checks do not contact OpenShift.
+
+## Base certificate issuance and mTLS
 
 ```bash
-oc get secret caller-app-tls-secret -n caller-ns -o jsonpath='{.data.tls\.crt}' | base64 -d | openssl x509 -noout -ext extendedKeyUsage -ext subjectAltName
-```
-
-## Bidirectional mTLS
-
-```bash
+make verify-pki
+make verify-certs
 make verify-mtls
 ```
 
-Expected: the caller curl pod presents caller identity to caller NGINX, which presents that same identity to calling NGINX; the reverse path uses the calling identity. An unauthenticated request to the caller TLS listener fails. Trust and hostname validation are enabled; tests must not use `-k`.
+Expected: `external-intermediate-ca` and both base Certificates are Ready. Each leaf has service DNS SANs plus `serverAuth` and `clientAuth`. Verification performs authenticated mTLS in both directions and browser-compatible HTTPS without a client certificate. It does not use `curl -k`.
 
-## Route hostname discovery
+## Edge Route
 
 ```bash
-oc get ingress.config/cluster -o jsonpath='{.spec.domain}{"\n"}'
-oc get route caller-app -n caller-ns -o jsonpath='{.spec.host}{"\n"}'
+make edge-route
+make verify-edge-route
 ```
 
-The Route host should use the current cluster apps domain. The corresponding hostname is included in the leaf certificate when `INCLUDE_ROUTE_SANS=true`.
+Expected: `edge-route-cert` has the Route hostname SAN, the Route uses edge termination and `externalCertificate`, and the page confirms HTTP between the router and backend.
+
+## trust-manager bundle and Routes
+
+```bash
+make trustbundle-mtls
+make verify-trustbundle-mtls
+```
+
+Expected: the Bundle condition is `Synced=True`; both selected namespaces contain `ca-bundle.crt` and `ca-bundle.p12`; both trust applications complete mTLS in each direction; and their passthrough Routes validate with the configured apps domain.
 
 ## Renewal
 
-```bash
-oc describe certificate caller-app-tls -n caller-ns
-oc get secret caller-app-tls-secret -n caller-ns -o jsonpath='{.data.tls\.crt}' | base64 -d | openssl x509 -noout -serial -dates
-```
-
-Validate how the deployed NGINX image reloads updated mounted Secret files. Restart the deployment after renewal if automatic reload is not configured.
+Operators may set short lab values such as `CERTIFICATE_DURATION=60m` and `CERTIFICATE_RENEW_BEFORE=10m`. After issuance, certificate renewal updates the Secret. NGINX must be restarted or otherwise reloaded before it serves the renewed certificate.

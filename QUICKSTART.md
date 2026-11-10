@@ -1,42 +1,57 @@
 # Quick Start
 
-1. Confirm OpenShift login and cert-manager installation:
+This guide deploys the base bidirectional mTLS scenario. It does not enable the optional edge Route or trust-manager scenarios.
 
-   ```bash
-   oc whoami
-   oc get crd certificates.cert-manager.io clusterissuers.cert-manager.io
-   oc get namespace cert-manager
-   ```
+## 1. Prepare local configuration
 
-2. Optional configuration:
+```bash
+cp config/lab.env.example config/lab.env
+make test
+make validate
+```
 
-   ```bash
-   cp config/lab.env.example config/lab.env
-   # APPS_DOMAIN can remain empty; offline rendering uses APPS_DOMAIN_FALLBACK.
-   ```
+`config/lab.env` is local-only. Operators should set `APPS_DOMAIN` when the cluster domain must be explicit; otherwise the deployment resolves it from OpenShift. Environment variables override the local file.
 
-3. Bootstrap everything:
+## 2. Confirm cluster access
 
-   ```bash
-   make bootstrap
-   ```
+```bash
+oc whoami
+oc get crd certificates.cert-manager.io clusterissuers.cert-manager.io
+make prereqs
+```
 
-4. Check status:
+The selected cert-manager namespace must already exist. The logged-in identity requires permission to create namespaces, Secrets, ConfigMaps, Certificates, Deployments, Services, Routes, and the lab ClusterIssuer.
 
-   ```bash
-   oc get clusterissuer external-intermediate-ca
-   oc get certificates -n caller-ns
-   oc get certificates -n calling-ns
-   oc get pods -n caller-ns
-   oc get pods -n calling-ns
-   ```
+## 3. Deploy and verify base mTLS
 
-5. Run bidirectional mTLS positive and unauthenticated negative tests:
+```bash
+make bootstrap
+make verify-pki
+make verify-certs
+make verify-mtls
+```
 
-   ```bash
-   make verify-mtls
-   ```
+The bootstrap workflow creates local Root and Intermediate CA material only when it is absent. It then deploys the caller and calling applications. The verification command tests authenticated service-to-service traffic in both directions and browser-compatible HTTPS access without a client certificate.
 
-The setup creates one leaf cert per app. Each cert is dual-purpose (`serverAuth` + `clientAuth`) and reused by that app for inbound and outbound TLS. The Root private key remains local/offline. See [README](README.md) for design, configuration and cleanup details.
+## 4. Use optional scenarios
 
-Before connecting to a cluster, run `make validate` and `make test`. Environment variables such as `CALLER_NAMESPACE` override `config/lab.env`.
+```bash
+# Router edge TLS termination; backend remains HTTP.
+make edge-route
+make verify-edge-route
+
+# Requires enabled trust-manager feature and a TrustManager operand.
+make trust-manager
+make trustbundle-mtls
+make verify-trustbundle-mtls
+```
+
+## 5. Preview cleanup
+
+```bash
+CLEANUP_DRY_RUN=true make clean
+CLEANUP_DRY_RUN=true make clean-edge-route
+CLEANUP_DRY_RUN=true make clean-trustbundle-mtls
+```
+
+Cleanup removes only resources carrying the lab ownership labels. It does not remove pre-existing namespaces, local Root/Intermediate CA files, or the shared cluster-scoped TrustManager operand.

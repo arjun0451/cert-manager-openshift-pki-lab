@@ -1,22 +1,28 @@
 # Architecture
 
-## Trust hierarchy
+## Base mTLS
 
-Offline Root CA signs an Intermediate CA. The Root private key remains outside the cluster. The Intermediate private key and certificate are held in the cert-manager namespace as `ca-key-pair`, referenced by the `external-intermediate-ca` ClusterIssuer.
+```text
+caller-app -- mTLS over Service DNS --> calling-app
+calling-app -- mTLS over Service DNS --> caller-app
+```
 
-The public trust bundle contains the Intermediate certificate followed by the Root certificate. It is published as a ConfigMap in both app namespaces. It contains no private key.
+The offline Root CA signs the Intermediate CA. cert-manager uses the Intermediate keypair in `ca-key-pair` to issue the two base leaf certificates. Each leaf certificate includes service DNS SANs and both `serverAuth` and `clientAuth` EKUs. The application holding a leaf keypair uses it for server TLS and client TLS.
 
-## Application identity
+Both workloads mount their own TLS Secret and a separate public Root-plus-Intermediate ConfigMap. NGINX uses the PEM trust bundle for client-certificate verification and upstream hostname verification. Port 8080 serves only health probes; port 8443 serves HTTPS. Client certificates are optional for browser-facing HTTPS, but required by the NGINX upstream mTLS configuration.
 
-There are exactly two leaf certificates:
+## Route models
 
-- `caller-app-tls-secret` in `caller-ns`
-- `calling-app-tls-secret` in `calling-ns`
+The base and trust-manager scenarios use passthrough Routes. TLS reaches NGINX, and the Route hostname must be present in the leaf certificate when `INCLUDE_ROUTE_SANS=true`.
 
-Each includes service DNS SANs and, by default, a Route SAN generated from the current OpenShift apps domain. Each has both `serverAuth` and `clientAuth` EKUs. The same certificate/key is used for NGINX inbound server TLS and outbound client TLS.
+The edge scenario uses a different flow:
 
-## Mutual TLS
+```text
+External client -- HTTPS --> OpenShift router -- HTTP --> Service --> NGINX pod
+```
 
-Both NGINX TLS listeners use `ssl_verify_client on` and trust the Root+Intermediate bundle. When caller connects to calling, caller presents its certificate and verifies calling's server certificate and DNS name. The reverse direction works symmetrically. Health probes use a separate HTTP listener and do not weaken the mTLS listener.
+The router reads the cert-manager Secret through scoped RBAC and terminates TLS. The edge pod has no serving TLS configuration.
 
-Routes are TLS passthrough; the application NGINX process terminates TLS. External Route access therefore also requires a trusted client certificate.
+## trust-manager scenario
+
+The cluster-scoped `Bundle` reads the Intermediate and Root public certificates from the configured trust namespace. It creates a selected-namespace ConfigMap containing `ca-bundle.crt` and `ca-bundle.p12`. The two trust-manager scenario applications use the PEM file for NGINX mTLS and mount the PKCS#12 file for Java-compatible consumers.

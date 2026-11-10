@@ -1,46 +1,57 @@
 # Troubleshooting
 
-## ClusterIssuer is not Ready
+## Configuration or render failure
+
+```bash
+make test
+make validate
+```
+
+Set an explicit `APPS_DOMAIN` for a known cluster domain. For local-only validation, leave it empty and set a valid `APPS_DOMAIN_FALLBACK`. Process environment values override `config/lab.env`.
+
+## ClusterIssuer or Certificate is not Ready
 
 ```bash
 oc describe clusterissuer external-intermediate-ca
-oc get secret ca-key-pair -n cert-manager
-oc get events -n cert-manager --sort-by=.lastTimestamp
-```
-
-Confirm the Secret contains `tls.crt` (Intermediate certificate), `tls.key` (matching Intermediate key), and `ca.crt` (public Root certificate). The Root certificate is not the signing certificate.
-
-## Certificate is not Ready
-
-```bash
 oc describe certificate caller-app-tls -n caller-ns
-oc describe certificaterequest -n caller-ns
+oc get events -n cert-manager --sort-by=.lastTimestamp
 oc get events -n caller-ns --sort-by=.lastTimestamp
 ```
 
-Check issuer readiness, SAN rendering, and that the apps domain can be discovered. Set `APPS_DOMAIN` in `config/lab.env` only if API discovery is unavailable.
+`ca-key-pair` must contain the Intermediate certificate in `tls.crt`, its matching private key in `tls.key`, and the public Root certificate in `ca.crt`. The Root private key must never be imported into the cluster.
 
-## TLS hostname or trust failure
-
-Confirm the certificate contains the exact service DNS/Route hostname and both Root and Intermediate certificates are in `pki-trust-bundle`:
+## TLS trust, SAN, or Route failure
 
 ```bash
+oc get secret caller-app-tls-secret -n caller-ns -o jsonpath='{.data.tls\.crt}' \
+  | base64 -d | openssl x509 -noout -ext subjectAltName -ext extendedKeyUsage
 oc get configmap pki-trust-bundle -n caller-ns -o yaml
-oc get secret caller-app-tls-secret -n caller-ns -o jsonpath='{.data.tls\.crt}' | base64 -d | openssl x509 -noout -text
+oc get route -n caller-ns
 ```
 
-Do not disable verification with `curl -k`; fix the trust bundle or SAN instead.
+The certificate must contain the exact Service DNS name and, when enabled, Route hostname. The trust ConfigMap must contain the Intermediate and Root public certificates. Operators should correct trust or SAN configuration rather than bypass verification with `curl -k`.
 
-## mTLS handshake failure
+## NGINX does not serve a renewed certificate
+
+Mounted Secret files can update without causing NGINX to reload. Operators should restart the affected deployment:
 
 ```bash
-oc logs deployment/nginx-caller -n caller-ns
-oc logs deployment/nginx-calling -n calling-ns
-oc exec deployment/nginx-caller -n caller-ns -- nginx -t
+oc rollout restart deployment/nginx-caller-app -n caller-ns
+oc rollout status deployment/nginx-caller-app -n caller-ns
 ```
 
-Ensure each app mounts its own `*-tls-secret` at `/etc/nginx/certs`, the public CA bundle at `/etc/nginx/trust/ca-bundle.crt`, and that the peer cert has `clientAuth` EKU. Ensure both Routes are passthrough if external TLS is being tested.
+The trust-bundle deployment workflow performs this restart after certificate reconciliation.
+
+## trust-manager Bundle is not Synced
+
+```bash
+oc get trustmanager cluster
+oc get deployment trust-manager -n cert-manager
+oc describe bundle pki-lab-java-trust-bundle
+```
+
+The cert-manager Operator must have `UNSUPPORTED_ADDON_FEATURES=TrustManager=true`. The TrustManager must be Ready, and `TRUST_MANAGER_NAMESPACE` must match its configured trust namespace containing `ca-key-pair`.
 
 ## Disconnected cluster
 
-Mirror `curlimages/curl:8.10.1` into the internal registry and update the image in `scripts/10_verify_mtls.sh` before running the verification target.
+Operators should mirror `curlimages/curl:8.10.1` to an approved registry and replace its references in verification scripts. The same approach applies to the NGINX image when external registries are unavailable.
