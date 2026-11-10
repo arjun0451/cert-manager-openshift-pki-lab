@@ -8,6 +8,7 @@ metadata:
     component: edge-route
 data:
   nginx.conf: |
+    pid /tmp/nginx.pid;
     events {}
     http {
       access_log /dev/stdout;
