@@ -49,6 +49,12 @@ for deployment in "$RENDER_DIR/trustbundle-caller-deployment.yaml" "$RENDER_DIR/
   grep -Fxq '          - {key: ca-bundle.crt, path: ca-bundle.crt}' "$deployment"
   grep -Fxq '          - {key: ca-bundle.p12, path: ca-bundle.p12}' "$deployment"
 done
+if [[ "$CREATE_ROUTES" == true ]]; then
+  for route in "$RENDER_DIR/trustbundle-caller-route.yaml" "$RENDER_DIR/trustbundle-calling-route.yaml"; do
+    grep -Fxq 'apiVersion: route.openshift.io/v1' "$route"
+    grep -Fxq '    termination: passthrough' "$route"
+  done
+fi
 root="$PROJECT_DIR/certs/root/certs/ca.cert.pem"
 intermediate="$PROJECT_DIR/certs/intermediate/certs/intermediate.cert.pem"
 if [[ -s "$root" && -s "$intermediate" ]]; then

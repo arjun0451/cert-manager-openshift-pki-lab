@@ -11,4 +11,6 @@ The ConfigMap contains:
 
 Both files contain public CA certificates only. NGINX mounts both files but uses the PEM key for its mTLS trust setting; the PKCS#12 file is available for applications that need it.
 
+When `CREATE_ROUTES=true`, each application receives a passthrough Route at `<application>.<apps-domain>`. Set `INCLUDE_ROUTE_SANS=true` so the issued leaf certificates include those Route hostnames.
+
 `TRUST_MANAGER_NAMESPACE` must match the trust-manager controller's configured trust namespace and contain the lab's `ca-key-pair` Secret. Run `make verify-trustbundle-mtls` to validate Bundle synchronization, inspect the PKCS#12 truststore, and test mTLS in both directions. Use `CLEANUP_DRY_RUN=true make clean-trustbundle-mtls` to preview removal.

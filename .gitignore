@@ -1,4 +1,6 @@
 # Certificate files (sensitive)
+certs/*
+!certs/.gitkeep
 certs/*.key
 certs/*.crt
 certs/*.csr

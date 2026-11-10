@@ -145,7 +145,8 @@ render_certificate() {
 }
 
 render_trust_template() {
-  local template="$1" output="$2" app_name="$3" namespace="$4" peer_name="$5" peer_namespace="$6" secret_name="$7" configmap_name="$8" deployment_name="$9"
+  local template="$1" output="$2" app_name="$3" namespace="$4" peer_name="$5" peer_namespace="$6" secret_name="$7" configmap_name="$8" deployment_name="$9" domain="${10:-}" route_san=''
+  if [[ "$INCLUDE_ROUTE_SANS" == true ]]; then route_san="  - ${app_name}.${domain}"; fi
   sed \
     -e "s|__TRUST_CALLER_NAMESPACE__|${TRUST_CALLER_NAMESPACE}|g" \
     -e "s|__TRUST_CALLING_NAMESPACE__|${TRUST_CALLING_NAMESPACE}|g" \
@@ -161,5 +162,7 @@ render_trust_template() {
     -e "s|__TRUST_SECRET_NAME__|${secret_name}|g" \
     -e "s|__TRUST_CONFIGMAP_NAME__|${configmap_name}|g" \
     -e "s|__TRUST_DEPLOYMENT_NAME__|${deployment_name}|g" \
+    -e "s|__TRUST_ROUTE_SAN__|${route_san}|g" \
+    -e "s|__APPS_DOMAIN__|${domain}|g" \
     "$template" > "$output"
 }

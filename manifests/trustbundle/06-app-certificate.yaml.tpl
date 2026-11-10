@@ -16,6 +16,7 @@ spec:
   - __TRUST_APP_NAME__.__TRUST_NAMESPACE__
   - __TRUST_APP_NAME__.__TRUST_NAMESPACE__.svc
   - __TRUST_APP_NAME__.__TRUST_NAMESPACE__.svc.cluster.local
+__TRUST_ROUTE_SAN__
   usages: [digital signature, key encipherment, server auth, client auth]
   privateKey: {algorithm: RSA, size: 2048, rotationPolicy: Always}
   issuerRef:

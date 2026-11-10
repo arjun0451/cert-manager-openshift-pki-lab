@@ -31,6 +31,9 @@ grep -q 'profile: Modern2023' "$first/trustbundle-bundle.yaml"
 grep -q 'name: trust-caller-app' "$first/trustbundle-caller-service.yaml"
 grep -q 'name: trust-calling-app' "$first/trustbundle-calling-service.yaml"
 grep -q 'key: ca-bundle.p12' "$first/trustbundle-caller-deployment.yaml"
+grep -q 'host: trust-caller-app.apps.example.com' "$first/trustbundle-caller-route.yaml"
+grep -q 'termination: passthrough' "$first/trustbundle-caller-route.yaml"
+grep -q -- '- trust-caller-app.apps.example.com' "$first/trustbundle-caller-certificate.yaml"
 
 render "$second" env APPS_DOMAIN= CREATE_ROUTES=false INCLUDE_ROUTE_SANS=true APPS_DOMAIN_FALLBACK=local.apps.example.test
 [[ ! -e "$second/caller-route.yaml" ]]
