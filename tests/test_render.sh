@@ -13,7 +13,7 @@ trap 'rm -rf "$first" "$second" "$third"' EXIT
 render "$first" env CALLER_NAMESPACE=alpha CALLING_NAMESPACE=beta CALLER_APP_NAME=frontend CALLING_APP_NAME=backend APPS_DOMAIN='*.apps.example.com' CREATE_ROUTES=true INCLUDE_ROUTE_SANS=true CERTIFICATE_DURATION=2h CERTIFICATE_RENEW_BEFORE=10m
 grep -q 'https://backend.beta.svc.cluster.local:443/' "$first/caller-01-configmap.yaml"
 grep -q 'ssl_verify_client optional' "$first/caller-01-configmap.yaml"
-grep -q 'Call backend' "$first/caller-01-configmap.yaml"
+grep -q 'Calling backend succeeded' "$first/caller-01-configmap.yaml"
 grep -q 'host: frontend.apps.example.com' "$first/caller-route.yaml"
 grep -q -- '- frontend.apps.example.com' "$first/caller-certificate.yaml"
 grep -q 'duration: 2h' "$first/caller-certificate.yaml"
