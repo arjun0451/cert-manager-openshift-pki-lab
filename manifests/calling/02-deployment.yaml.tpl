@@ -18,7 +18,7 @@ spec:
       maxUnavailable: 0
   selector:
     matchLabels:
-    app: __CALLING_DEPLOYMENT_NAME__
+      app: __CALLING_DEPLOYMENT_NAME__
       component: calling
   template:
     metadata:

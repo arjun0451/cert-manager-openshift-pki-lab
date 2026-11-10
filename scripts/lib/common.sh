@@ -7,7 +7,8 @@ CONFIG_FILE="${CONFIG_FILE:-${PROJECT_DIR}/config/lab.env}"
 CONFIG_KEYS=(
   CALLER_NAMESPACE CALLING_NAMESPACE CERT_MANAGER_NAMESPACE CLUSTER_ISSUER_NAME
   CALLER_APP_NAME CALLING_APP_NAME CREATE_ROUTES INCLUDE_ROUTE_SANS APPS_DOMAIN
-  AUTO_DISCOVER_APPS_DOMAIN APPS_DOMAIN_FALLBACK ROOT_CA_COMMON_NAME
+  AUTO_DISCOVER_APPS_DOMAIN APPS_DOMAIN_FALLBACK CERTIFICATE_DURATION
+  CERTIFICATE_RENEW_BEFORE ROOT_CA_COMMON_NAME
   INTERMEDIATE_CA_COMMON_NAME
 )
 for key in "${CONFIG_KEYS[@]}"; do
@@ -29,6 +30,8 @@ CERT_MANAGER_NAMESPACE="${CERT_MANAGER_NAMESPACE:-cert-manager}"
 CLUSTER_ISSUER_NAME="${CLUSTER_ISSUER_NAME:-external-intermediate-ca}"
 CALLER_APP_NAME="${CALLER_APP_NAME:-caller-app}"
 CALLING_APP_NAME="${CALLING_APP_NAME:-calling-app}"
+CERTIFICATE_DURATION="${CERTIFICATE_DURATION:-60m}"
+CERTIFICATE_RENEW_BEFORE="${CERTIFICATE_RENEW_BEFORE:-10m}"
 CREATE_ROUTES="${CREATE_ROUTES:-true}"
 INCLUDE_ROUTE_SANS="${INCLUDE_ROUTE_SANS:-true}"
 APPS_DOMAIN="${APPS_DOMAIN:-}"
@@ -46,6 +49,12 @@ need() { command -v "$1" >/dev/null 2>&1 || { echo "ERROR: Required command '$1'
 require_oc_login() { need oc; oc whoami >/dev/null 2>&1 || { echo 'ERROR: Run oc login first.' >&2; exit 1; }; }
 is_valid_name() { [[ "$1" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]]; }
 is_valid_domain() { [[ "$1" =~ ^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)+$ ]]; }
+duration_seconds() {
+  [[ "$1" =~ ^([1-9][0-9]*)(ms|s|m|h)$ ]] || return 1
+  local amount="${BASH_REMATCH[1]}" unit="${BASH_REMATCH[2]}" multiplier=1
+  case "$unit" in ms) multiplier=0 ;; s) multiplier=1 ;; m) multiplier=60 ;; h) multiplier=3600 ;; esac
+  printf '%s' "$((amount * multiplier))"
+}
 normalize_domain() {
   local domain="$1"
   [[ "$domain" == \*.* ]] && domain="${domain#*.}"
@@ -62,7 +71,7 @@ resolve_apps_domain() {
   normalize_domain "$domain"
 }
 validate_config() {
-  local value
+  local value duration renewal
   for value in "$CALLER_NAMESPACE" "$CALLING_NAMESPACE" "$CALLER_APP_NAME" "$CALLING_APP_NAME"; do
     is_valid_name "$value" || { echo "ERROR: Invalid Kubernetes name: $value" >&2; return 1; }
   done
@@ -70,6 +79,9 @@ validate_config() {
   for value in "$CREATE_ROUTES" "$INCLUDE_ROUTE_SANS" "$AUTO_DISCOVER_APPS_DOMAIN"; do
     [[ "$value" == true || "$value" == false ]] || { echo "ERROR: Expected true or false, got: $value" >&2; return 1; }
   done
+  duration="$(duration_seconds "$CERTIFICATE_DURATION")" || { echo "ERROR: Invalid CERTIFICATE_DURATION: $CERTIFICATE_DURATION" >&2; return 1; }
+  renewal="$(duration_seconds "$CERTIFICATE_RENEW_BEFORE")" || { echo "ERROR: Invalid CERTIFICATE_RENEW_BEFORE: $CERTIFICATE_RENEW_BEFORE" >&2; return 1; }
+  (( duration >= 3600 && renewal >= 300 && duration > renewal )) || { echo 'ERROR: Certificate duration must be at least 60m, renewBefore at least 5m, and duration greater than renewBefore.' >&2; return 1; }
 }
 render_template() {
   local template="$1" output="$2" domain="${3:-}"
@@ -99,6 +111,8 @@ render_certificate() {
     -e "s|__APP_NAME__|${app_name}|g" \
     -e "s|__SECRET_NAME__|${secret_name}|g" \
     -e "s|__CLUSTER_ISSUER_NAME__|${CLUSTER_ISSUER_NAME}|g" \
+    -e "s|__CERTIFICATE_DURATION__|${CERTIFICATE_DURATION}|g" \
+    -e "s|__CERTIFICATE_RENEW_BEFORE__|${CERTIFICATE_RENEW_BEFORE}|g" \
     -e "s|__ROUTE_SAN__|${route_san}|g" \
     "$PROJECT_DIR/manifests/certificates/app-certificate.yaml.tpl" > "$output"
 }

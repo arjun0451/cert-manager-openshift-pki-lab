@@ -15,6 +15,9 @@ for spec in "$CALLER_CERTIFICATE_NAME:$CALLER_NAMESPACE:$CALLER_SECRET_NAME:$CAL
   done
   [[ "$ready" == true ]] || { oc describe certificate "$cert" -n "$ns"; exit 1; }
   oc get secret "$secret" -n "$ns" >/dev/null
+  [[ "$(oc get certificate "$cert" -n "$ns" -o jsonpath='{.spec.duration}')" == "$CERTIFICATE_DURATION" ]] || { echo "Unexpected duration in $cert" >&2; exit 1; }
+  [[ "$(oc get certificate "$cert" -n "$ns" -o jsonpath='{.spec.renewBefore}')" == "$CERTIFICATE_RENEW_BEFORE" ]] || { echo "Unexpected renewBefore in $cert" >&2; exit 1; }
+  [[ -n "$(oc get certificate "$cert" -n "$ns" -o jsonpath='{.status.renewalTime}')" ]] || { echo "Missing renewalTime in $cert" >&2; exit 1; }
   certfile="$(mktemp)"
   oc get secret "$secret" -n "$ns" -o jsonpath='{.data.tls\.crt}' | base64 -d > "$certfile"
   eku="$(openssl x509 -in "$certfile" -noout -ext extendedKeyUsage)"

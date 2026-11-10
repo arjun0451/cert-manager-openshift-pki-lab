@@ -7,7 +7,7 @@ if oc get clusterissuer "$CLUSTER_ISSUER_NAME" >/dev/null 2>&1; then
   owner="$(oc get clusterissuer "$CLUSTER_ISSUER_NAME" -o jsonpath='{.metadata.labels.pki-lab-owned}' 2>/dev/null || true)"
   [[ "$owner" == true ]] || { echo "Refusing to overwrite unowned ClusterIssuer $CLUSTER_ISSUER_NAME." >&2; exit 1; }
 fi
-sed "s/__ISSUER_NAME__/${CLUSTER_ISSUER_NAME}/g" "$PROJECT_DIR/manifests/clusterissuer/clusterissuer.yaml" | oc apply -f -
+sed "s/__CLUSTER_ISSUER_NAME__/${CLUSTER_ISSUER_NAME}/g" "$PROJECT_DIR/manifests/clusterissuer/clusterissuer.yaml" | oc apply -f -
 for i in {1..60}; do
   [[ "$(oc get clusterissuer "$CLUSTER_ISSUER_NAME" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || true)" == True ]] && { echo 'ClusterIssuer Ready'; exit 0; }
   sleep 2

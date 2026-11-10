@@ -15,4 +15,5 @@ if [[ "$CREATE_ROUTES" == true ]]; then
   render_template "$PROJECT_DIR/manifests/caller/04-route.yaml.tpl" "$TMP/caller-route.yaml" "$domain"
   oc apply -f "$TMP/caller-route.yaml"
 fi
+oc rollout restart "deployment/$CALLER_DEPLOYMENT_NAME" -n "$CALLER_NAMESPACE"
 oc rollout status "deployment/$CALLER_DEPLOYMENT_NAME" -n "$CALLER_NAMESPACE" --timeout=180s

@@ -9,8 +9,8 @@ metadata:
 spec:
   secretName: __SECRET_NAME__
   commonName: __APP_NAME__
-  duration: 2160h
-  renewBefore: 720h
+  duration: __CERTIFICATE_DURATION__
+  renewBefore: __CERTIFICATE_RENEW_BEFORE__
   dnsNames:
     - __APP_NAME__
     - __APP_NAME__.__NAMESPACE__

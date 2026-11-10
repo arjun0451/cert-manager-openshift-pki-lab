@@ -34,11 +34,9 @@ oc wait --for=condition=Ready pod/pki-mtls-check -n "$CALLER_NAMESPACE" --timeou
 oc exec -n "$CALLER_NAMESPACE" pki-mtls-check -- curl --fail --silent --show-error \
   --cacert /trust/ca-bundle.crt --cert /identity/tls.crt --key /identity/tls.key \
   https://$CALLER_APP_NAME.$CALLER_NAMESPACE.svc.cluster.local:443/call-peer | grep -q "$CALLING_APP_NAME"
-# Negative: caller NGINX must reject a client without a certificate.
-if oc exec -n "$CALLER_NAMESPACE" pki-mtls-check -- curl --silent --output /dev/null --max-time 10 \
-  --cacert /trust/ca-bundle.crt https://$CALLER_APP_NAME.$CALLER_NAMESPACE.svc.cluster.local:443/; then
-  echo 'ERROR: unauthenticated TLS request unexpectedly succeeded' >&2; exit 1
-fi
+# Browser-mode: caller NGINX accepts an HTTPS request without a client certificate.
+oc exec -n "$CALLER_NAMESPACE" pki-mtls-check -- curl --fail --silent --show-error \
+  --cacert /trust/ca-bundle.crt https://$CALLER_APP_NAME.$CALLER_NAMESPACE.svc.cluster.local:443/ | grep -q "$CALLER_APP_NAME"
 # Reverse direction: calling identity connects to caller service.
 cat > "$TMP" <<EOF
 apiVersion: v1
@@ -69,4 +67,4 @@ oc exec -n "$CALLING_NAMESPACE" pki-mtls-check-reverse -- curl --fail --silent -
   https://$CALLING_APP_NAME.$CALLING_NAMESPACE.svc.cluster.local:443/call-peer | grep -q "$CALLER_APP_NAME"
 oc delete pod pki-mtls-check-reverse -n "$CALLING_NAMESPACE" --ignore-not-found=true >/dev/null
 rm -f "$TMP"
-echo 'mTLS verification passed in both directions; unauthenticated client was rejected.'
+echo 'mTLS verification passed in both directions; browser-mode HTTPS access succeeded.'

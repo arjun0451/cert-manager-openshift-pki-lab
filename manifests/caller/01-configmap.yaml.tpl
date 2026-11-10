@@ -23,11 +23,11 @@ data:
         ssl_certificate /etc/nginx/certs/tls.crt;
         ssl_certificate_key /etc/nginx/certs/tls.key;
         ssl_client_certificate /etc/nginx/trust/ca-bundle.crt;
-        ssl_verify_client on;
+        ssl_verify_client optional;
         ssl_verify_depth 2;
         ssl_protocols TLSv1.2 TLSv1.3;
         location = /health { return 200 "OK\n"; add_header Content-Type text/plain; }
-        location = / { return 200 "__CALLER_APP_NAME__ - mTLS identity active\n"; add_header Content-Type text/plain; }
+        location = / { default_type text/html; return 200 '<!doctype html><html><head><title>__CALLER_APP_NAME__</title></head><body><h1>__CALLER_APP_NAME__</h1><p>HTTPS page; backend calls use mTLS.</p><button onclick="fetch(&quot;/call-peer&quot;).then(r=&gt;r.text()).then(t=&gt;document.getElementById(&quot;result&quot;).textContent=t)">Call __CALLING_APP_NAME__</button><pre id="result"></pre></body></html>'; }
         location = /call-peer {
           proxy_pass https://__CALLING_APP_NAME__.__CALLING_NAMESPACE__.svc.cluster.local:443/;
           proxy_ssl_certificate /etc/nginx/certs/tls.crt;
