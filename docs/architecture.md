@@ -1,28 +1,101 @@
 # Architecture
 
-## Base mTLS
+The diagrams describe the resources created by the lab and the reconciliation paths that keep certificates and trust data current. Mermaid renders directly in GitHub and remains aligned with the manifests.
 
-```text
-caller-app -- mTLS over Service DNS --> calling-app
-calling-app -- mTLS over Service DNS --> caller-app
+## Base certificate reconciliation
+
+```mermaid
+flowchart LR
+  root["🔐 Offline Root CA\nlocal certs/root"]
+  intermediate["🔐 Intermediate CA\nlocal certs/intermediate"]
+
+  subgraph cluster["☸️ OpenShift cluster"]
+    subgraph cmns["Namespace: cert-manager"]
+      cakey["🔑 Secret: ca-key-pair\nIntermediate key + chain"]
+      issuer["📜 ClusterIssuer\nexternal-intermediate-ca"]
+      controller["⚙️ cert-manager controller"]
+    end
+
+    subgraph callerNs["Namespace: caller-ns"]
+      callerCert["📜 Certificate\ncaller-app-tls"]
+      callerSecret["🔑 Secret\ncaller-app-tls-secret"]
+      callerTrust["📦 ConfigMap\npki-trust-bundle"]
+      callerApp["⚙️ Deployment\nnginx-caller-app"]
+    end
+
+    subgraph callingNs["Namespace: calling-ns"]
+      callingCert["📜 Certificate\ncalling-app-tls"]
+      callingSecret["🔑 Secret\ncalling-app-tls-secret"]
+      callingTrust["📦 ConfigMap\npki-trust-bundle"]
+      callingApp["⚙️ Deployment\nnginx-calling-app"]
+    end
+  end
+
+  root -->|signs| intermediate
+  intermediate -->|imported by make issuer| cakey
+  cakey --> issuer
+  controller -->|reconciles| callerCert
+  controller -->|reconciles| callingCert
+  issuer -->|signs| callerCert
+  issuer -->|signs| callingCert
+  callerCert -->|writes tls.crt, tls.key, ca.crt| callerSecret
+  callingCert -->|writes tls.crt, tls.key, ca.crt| callingSecret
+  intermediate -->|public chain only| callerTrust
+  intermediate -->|public chain only| callingTrust
+  callerSecret -->|mounted at /etc/nginx/certs| callerApp
+  callerTrust -->|mounted at /etc/nginx/trust| callerApp
+  callingSecret -->|mounted at /etc/nginx/certs| callingApp
+  callingTrust -->|mounted at /etc/nginx/trust| callingApp
 ```
 
-The offline Root CA signs the Intermediate CA. cert-manager uses the Intermediate keypair in `ca-key-pair` to issue the two base leaf certificates. Each leaf certificate includes service DNS SANs and both `serverAuth` and `clientAuth` EKUs. The application holding a leaf keypair uses it for server TLS and client TLS.
+The Root private key never enters the cluster. The `ca-key-pair` Secret contains the Intermediate signing key and the public Root certificate. cert-manager reconciles each `Certificate` and updates its target Secret at issuance and renewal.
 
-Both workloads mount their own TLS Secret and a separate public Root-plus-Intermediate ConfigMap. NGINX uses the PEM trust bundle for client-certificate verification and upstream hostname verification. Port 8080 serves only health probes; port 8443 serves HTTPS. Client certificates are optional for browser-facing HTTPS, but required by the NGINX upstream mTLS configuration.
+## Base application traffic and namespace resources
 
-## Route models
+```mermaid
+flowchart LR
+  subgraph callerNs["☸️ caller-ns"]
+    callerRoute["🌐 Route: caller-app\nTLS passthrough"]
+    callerSvc["🔀 Service: caller-app\n443 → 8443"]
+    callerPod["⚙️ nginx-caller-app Pod\nserver TLS + mTLS client"]
+  end
 
-The base and trust-manager scenarios use passthrough Routes. TLS reaches NGINX, and the Route hostname must be present in the leaf certificate when `INCLUDE_ROUTE_SANS=true`.
+  subgraph callingNs["☸️ calling-ns"]
+    callingRoute["🌐 Route: calling-app\nTLS passthrough"]
+    callingSvc["🔀 Service: calling-app\n443 → 8443"]
+    callingPod["⚙️ nginx-calling-app Pod\nserver TLS + mTLS client"]
+  end
 
-The edge scenario uses a different flow:
-
-```text
-External client -- HTTPS --> OpenShift router -- HTTP --> Service --> NGINX pod
+  browser["🌐 Browser or external client"] --> callerRoute --> callerSvc --> callerPod
+  browser --> callingRoute --> callingSvc --> callingPod
+  callerPod -->|mTLS, peer SAN verification| callingSvc
+  callingPod -->|mTLS, peer SAN verification| callerSvc
 ```
 
-The router reads the cert-manager Secret through scoped RBAC and terminates TLS. The edge pod has no serving TLS configuration.
+Both applications use their own dual-EKU leaf keypair for inbound TLS and outbound mTLS. NGINX allows browser HTTPS without a client certificate, while its upstream calls always present a certificate and validate the peer hostname and CA chain. Port 8080 remains limited to health probes.
 
-## trust-manager scenario
+## Optional scenarios
 
-The cluster-scoped `Bundle` reads the Intermediate and Root public certificates from the configured trust namespace. It creates a selected-namespace ConfigMap containing `ca-bundle.crt` and `ca-bundle.p12`. The two trust-manager scenario applications use the PEM file for NGINX mTLS and mount the PKCS#12 file for Java-compatible consumers.
+```mermaid
+flowchart LR
+  client["🌐 External client"]
+
+  subgraph edge["Edge Route scenario"]
+    router["🔀 OpenShift router\nedge TLS termination"]
+    edgeSecret["🔑 edge-route-tls\ncert-manager managed"]
+    edgeSvc["🔀 nginx-edge-service"]
+    edgePod["⚙️ nginx-edge-app\nHTTP :8080"]
+    client -->|HTTPS| router -->|HTTP| edgeSvc --> edgePod
+    edgeSecret -->|externalCertificate reference| router
+  end
+
+  subgraph trust["trust-manager mTLS scenario"]
+    bundle["📜 Bundle\npki-lab-java-trust-bundle"]
+    trustCaller["☸️ trust-caller-ns\nPEM + PKCS#12 ConfigMap"]
+    trustCalling["☸️ trust-calling-ns\nPEM + PKCS#12 ConfigMap"]
+    bundle -->|reconciles selected namespaces| trustCaller
+    bundle -->|reconciles selected namespaces| trustCalling
+  end
+```
+
+The edge Route intentionally terminates TLS at the router and is not end-to-end encryption. The trust-manager Bundle publishes `ca-bundle.crt` for NGINX and `ca-bundle.p12` for Java-compatible consumers; neither file contains a private key.
